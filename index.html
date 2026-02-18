@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Spark Worker Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: white; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 10px; }
+        .job-card { background: #1e293b; border-radius: 12px; padding: 15px; margin-top: 20px; border-left: 6px solid #fbbf24; }
+        .price-tag { color: #fbbf24; font-weight: bold; font-size: 1.2rem; }
+        button { background-color: #fbbf24; color: #0f172a; border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
+        button:active { background-color: #f59e0b; transform: scale(0.98); }
+        #status-msg { margin-top: 10px; font-size: 0.9rem; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Quick Spark</h1>
+        <div id="worker-tag">Worker #1</div>
+    </div>
+
+    <h3>Active Wash Jobs</h3>
+    <div id="jobs-container">
+        <p>Loading your schedule...</p>
+    </div>
+
+    <script>
+        // --- 1. CONFIGURATION ---
+        const SUPABASE_URL = 'https://sxgucppcayvcgsvdehxe.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Z3VjcHBjYXl2Y2dzdmRlaHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMzE5ODAsImV4cCI6MjA4NjkwNzk4MH0.jNQlr5jXPybnCUVrpJU9HftEnclvr-JjFBM6QE9XtgM';
+        
+        // --- 2. INITIALIZE SUPABASE ---
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- 3. FUNCTION TO FETCH JOBS ---
+        async function fetchActiveJobs() {
+            const { data, error } = await _supabase
+                .from('active_jobs') 
+                .select('*');
+
+            const container = document.getElementById('jobs-container');
+            
+            if (error) {
+                container.innerHTML = `<p style="color:red">Error: ${error.message}</p>`;
+                return;
+            }
+
+            if (data.length === 0) {
+                container.innerHTML = '<p>No active washes. Time to find new stands!</p>';
+                return;
+            }
+
+            container.innerHTML = ''; 
+
+            data.forEach(job => {
+                const card = document.createElement('div');
+                card.className = 'job-card';
+                card.innerHTML = `
+                    <div><strong>${job.vehicle_category}</strong> - ${job.service_type}</div>
+                    <div class="price-tag">$${job.total_price}</div>
+                    <div>Status: ${job.status}</div>
+                    <button onclick="completeWash('${job.id}')">MARK AS COMPLETED</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- 4. FUNCTION TO COMPLETE A WASH ---
+        async function completeWash(jobId) {
+            const { error } = await _supabase
+                .from('bookings')
+                .update({ status: 'Completed' })
+                .eq('id', jobId);
+
+            if (error) {
+                alert("Update failed: " + error.message);
+            } else {
+                alert("Wash Completed! 4x4 Fund Updated.");
+                fetchActiveJobs(); 
+            }
+        }
+
+        fetchActiveJobs();
+    </script>
+</body>
+</html>
