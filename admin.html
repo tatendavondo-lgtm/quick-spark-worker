@@ -3,82 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quick Spark Admin - Safe Mode</title>
+    <title>Quick Spark Worker Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: white; padding: 20px; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .stat-card { background: #1e293b; padding: 20px; border-radius: 15px; text-align: center; border-bottom: 4px solid #38bdf8; }
-        .value { font-size: 1.8rem; font-weight: bold; display: block; margin-top: 10px; color: #fbbf24; }
-        .label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; }
-        #error-log { color: #ef4444; background: #450a0a; padding: 10px; border-radius: 5px; margin-top: 20px; display: none; font-family: monospace; }
-        h1 { color: #38bdf8; margin-bottom: 5px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 20px; }
+        .rain-banner { padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: center; font-weight: bold; transition: 0.3s; }
+        .job-card { background: #1e293b; border-radius: 12px; padding: 15px; margin-top: 15px; border-left: 6px solid #fbbf24; }
+        .price-tag { color: #fbbf24; font-weight: bold; font-size: 1.2rem; }
+        .btn { border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; font-family: inherit; }
+        .btn-complete { background-color: #fbbf24; color: #0f172a; }
+        .btn-rain { background-color: #334155; color: white; margin-bottom: 20px; }
+        .btn:active { transform: scale(0.98); }
+        h3 { margin-bottom: 5px; color: #94a3b8; }
     </style>
 </head>
 <body>
 
-    <h1>Quick Spark HQ</h1>
-    <p>Real-time Harare 4x4 Trail Fund</p>
+    <div class="header">
+        <h1>Quick Spark</h1>
+        <div id="worker-tag">Worker #1</div>
+    </div>
 
-    <div id="error-log"></div>
+    <div id="rain-status" class="rain-banner">Loading weather status...</div>
+    <button id="rain-btn" class="btn btn-rain" onclick="toggleRainDelay()">CHECKING SENSORS...</button>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <span class="label">Total Washes</span>
-            <span id="washes" class="value">...</span>
-        </div>
-        <div class="stat-card">
-            <span class="label">Total Revenue</span>
-            <span id="revenue" class="value">...</span>
-        </div>
-        <div class="stat-card">
-            <span class="label">4x4 Trail Fund</span>
-            <span id="fund" class="value">...</span>
-        </div>
-        <div class="stat-card">
-            <span class="label">Free Washes Due</span>
-            <span id="loyalty" class="value">...</span>
-        </div>
+    <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
+
+    <h3>Active Wash Jobs</h3>
+    <div id="jobs-container">
+        <p>Syncing with Brain...</p>
     </div>
 
     <script>
+        // --- CONFIGURATION ---
         const SUPABASE_URL = 'https://sxgucppcayvcgsvdehxe.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Z3VjcHBjYXl2Y2dzdmRlaHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMzE5ODAsImV4cCI6MjA4NjkwNzk4MH0.jNQlr5jXPybnCUVrpJU9HftEnclvr-JjFBM6QE9XtgM';
-        
-        const logError = (msg) => {
-            const el = document.getElementById('error-log');
-            el.style.display = 'block';
-            el.innerHTML += `> ${msg}<br>`;
-        };
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        try {
-            const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // --- RAIN DELAY LOGIC ---
+        async function checkRainStatus() {
+            const { data, error } = await _supabase.from('system_settings').select('rain_delay').eq('id', 1).single();
+            if (error) return;
 
-            async function loadStats() {
-                // Fetching from the view we created
-                const { data, error } = await _supabase.from('business_stats').select('*');
-                
-                if (error) {
-                    logError("Database Error: " + error.message);
-                    return;
-                }
+            const banner = document.getElementById('rain-status');
+            const btn = document.getElementById('rain-btn');
+            
+            if (data.rain_delay) {
+                banner.style.backgroundColor = "#7f1d1d"; // Dark Red
+                banner.innerText = "⚠️ RAIN DELAY ACTIVE";
+                btn.innerText = "RESUME WASHES ☀️";
+                btn.style.backgroundColor = "#166534"; // Green to resume
+            } else {
+                banner.style.backgroundColor = "#14532d"; // Dark Green
+                banner.innerText = "☀️ ALL CLEAR: WASHES ACTIVE";
+                btn.innerText = "ACTIVATE RAIN DELAY 🌧️";
+                btn.style.backgroundColor = "#1e293b";
+            }
+        }
 
-                if (!data || data.length === 0) {
-                    logError("No data found in 'business_stats'. Make sure you have completed at least one wash!");
-                    return;
-                }
+        async function toggleRainDelay() {
+            const { data } = await _supabase.from('system_settings').select('rain_delay').eq('id', 1).single();
+            const newStatus = !data.rain_delay;
+            
+            const { error } = await _supabase.from('system_settings').update({ rain_delay: newStatus }).eq('id', 1);
+            
+            if (!error) {
+                checkRainStatus();
+            } else {
+                alert("Error updating status: " + error.message);
+            }
+        }
 
-                const stats = data[0];
-                document.getElementById('washes').innerText = stats.total_washes || 0;
-                document.getElementById('revenue').innerText = `$${stats.total_revenue || 0}`;
-                document.getElementById('fund').innerText = `$${stats.total_4x4_fund || 0}`;
-                document.getElementById('loyalty').innerText = stats.customers_due_for_free_wash || 0;
+        // --- JOB MANAGEMENT LOGIC ---
+        async function fetchActiveJobs() {
+            const { data, error } = await _supabase.from('active_jobs').select('*');
+            const container = document.getElementById('jobs-container');
+            
+            if (error) {
+                container.innerHTML = `<p style="color:red">Error: ${error.message}</p>`;
+                return;
             }
 
-            loadStats();
-        } catch (err) {
-            logError("System Error: " + err.message);
+            if (data.length === 0) {
+                container.innerHTML = '<p>No pending washes. Good job!</p>';
+                return;
+            }
+
+            container.innerHTML = ''; 
+
+            data.forEach(job => {
+                const card = document.createElement('div');
+                card.className = 'job-card';
+                card.innerHTML = `
+                    <div><strong>${job.vehicle_category}</strong> - ${job.service_type}</div>
+                    <div class="price-tag">$${job.total_price}</div>
+                    <div>Status: ${job.status}</div>
+                    <button class="btn btn-complete" onclick="completeWash('${job.id}')">MARK AS COMPLETED</button>
+                `;
+                container.appendChild(card);
+            });
         }
+
+        async function completeWash(jobId) {
+            const { error } = await _supabase.from('bookings').update({ status: 'Completed' }).eq('id', jobId);
+            if (!error) {
+                fetchActiveJobs(); 
+            }
+        }
+
+        // Initial Load
+        checkRainStatus();
+        fetchActiveJobs();
+
+        // Auto-refresh every 60 seconds
+        setInterval(() => {
+            checkRainStatus();
+            fetchActiveJobs();
+        }, 60000);
     </script>
 </body>
 </html>
