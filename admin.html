@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Spark Admin - Safe Mode</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: white; padding: 20px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .stat-card { background: #1e293b; padding: 20px; border-radius: 15px; text-align: center; border-bottom: 4px solid #38bdf8; }
+        .value { font-size: 1.8rem; font-weight: bold; display: block; margin-top: 10px; color: #fbbf24; }
+        .label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; }
+        #error-log { color: #ef4444; background: #450a0a; padding: 10px; border-radius: 5px; margin-top: 20px; display: none; font-family: monospace; }
+        h1 { color: #38bdf8; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>Quick Spark HQ</h1>
+    <p>Real-time Harare 4x4 Trail Fund</p>
+
+    <div id="error-log"></div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="label">Total Washes</span>
+            <span id="washes" class="value">...</span>
+        </div>
+        <div class="stat-card">
+            <span class="label">Total Revenue</span>
+            <span id="revenue" class="value">...</span>
+        </div>
+        <div class="stat-card">
+            <span class="label">4x4 Trail Fund</span>
+            <span id="fund" class="value">...</span>
+        </div>
+        <div class="stat-card">
+            <span class="label">Free Washes Due</span>
+            <span id="loyalty" class="value">...</span>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://sxgucppcayvcgsvdehxe.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Z3VjcHBjYXl2Y2dzdmRlaHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMzE5ODAsImV4cCI6MjA4NjkwNzk4MH0.jNQlr5jXPybnCUVrpJU9HftEnclvr-JjFBM6QE9XtgM';
+        
+        const logError = (msg) => {
+            const el = document.getElementById('error-log');
+            el.style.display = 'block';
+            el.innerHTML += `> ${msg}<br>`;
+        };
+
+        try {
+            const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+            async function loadStats() {
+                // Fetching from the view we created
+                const { data, error } = await _supabase.from('business_stats').select('*');
+                
+                if (error) {
+                    logError("Database Error: " + error.message);
+                    return;
+                }
+
+                if (!data || data.length === 0) {
+                    logError("No data found in 'business_stats'. Make sure you have completed at least one wash!");
+                    return;
+                }
+
+                const stats = data[0];
+                document.getElementById('washes').innerText = stats.total_washes || 0;
+                document.getElementById('revenue').innerText = `$${stats.total_revenue || 0}`;
+                document.getElementById('fund').innerText = `$${stats.total_4x4_fund || 0}`;
+                document.getElementById('loyalty').innerText = stats.customers_due_for_free_wash || 0;
+            }
+
+            loadStats();
+        } catch (err) {
+            logError("System Error: " + err.message);
+        }
+    </script>
+</body>
+</html>
